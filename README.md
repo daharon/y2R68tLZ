@@ -25,5 +25,5 @@ ARGS:
 
 ## Run
 ```shell
-cargo run -- ./test.txt
+cargo run -- --concurrency=10 ./test.txt
 ```

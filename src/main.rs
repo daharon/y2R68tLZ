@@ -4,6 +4,7 @@ use std::io::BufRead;
 
 use clap::{Arg, crate_name, crate_version};
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 
 fn main() {
     // Command-line parameters.
@@ -22,7 +23,7 @@ fn main() {
             .required(true)
             .multiple(true))
         .get_matches();
-    let concurrency = matches.value_of("concurrency").unwrap().parse::<i32>()
+    let concurrency = matches.value_of("concurrency").unwrap().parse::<usize>()
         .expect("Failed to parse to integer.");
     let input_files: Vec<_> = matches.values_of("FILE").unwrap().collect();
 
@@ -36,7 +37,7 @@ fn main() {
                 Err(err) => {
                     eprintln!("Failed to open {}:  {}", file_name, err);
                     vec![]
-                },
+                }
                 Ok(f) => {
                     let f = io::BufReader::new(f);
                     f.lines()
@@ -50,6 +51,13 @@ fn main() {
         .collect();
     eprintln!("URLs:  {:?}", urls);
 
+    // Configure the parallelism.
+    ThreadPoolBuilder::new()
+        .num_threads(concurrency)
+        .build_global()
+        .expect("Failed to configure the thread-pool.");
+
+    // Download URL contents and calculate MD5 hash.
     // Using a thread-based parallel iterator provided by the Rayon library.
     // https://crates.io/crates/rayon
     urls.par_iter()
@@ -58,7 +66,7 @@ fn main() {
                 Err(err) => {
                     eprintln!("Failed to download contents of {}:  {}", url, err);
                     "ERROR".to_string()
-                },
+                }
                 Ok(response) => match response.bytes() {
                     Ok(bytes) => format!("{:x}", md5::compute(bytes)).to_string(),
                     Err(err) => {
